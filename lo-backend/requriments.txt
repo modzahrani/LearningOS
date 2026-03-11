@@ -43,7 +43,7 @@ google-auth==2.41.1
 google-pasta==0.2.0
 googleapis-common-protos==1.69.2
 grpcio==1.75.1
-grpcio-status==1.75.1
+grpcio-status<1.75
 h11==0.16.0
 h2==4.3.0
 h5py==3.13.0
@@ -110,7 +110,7 @@ promise==2.3
 prompt_toolkit==3.0.52
 propcache==0.4.0
 proto-plus==1.26.1
-protobuf==6.32.1
+protobuf>=5.28.0,<6.0.0
 psutil==7.0.0
 psycopg2-binary==2.9.10
 ptyprocess==0.7.0
@@ -123,7 +123,7 @@ pydantic==2.11.7
 pydantic-settings==2.11.0
 pydantic_core==2.33.2
 Pygments==2.19.1
-PyJWT==2.8.0
+PyJWT>=2.10.1
 pyparsing==3.2.1
 pypdf==6.1.1
 python-dateutil==2.9.0.post0

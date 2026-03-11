@@ -6,6 +6,7 @@ from uuid import NAMESPACE_DNS, uuid5
 from db import get_db
 from auth import verify_token
 from models.models import UserCreate
+from models.models import UserLogin
 from supabase import create_client
 
 # --- Load environment variables ---
@@ -159,3 +160,88 @@ async def check_email_exists(email: str = Query(..., min_length=3)):
     await db.close()
 
     return {"available": not exists}
+
+
+# --- login route ---
+
+@router.post("/login")
+async def login_user(user: UserLogin, response: Response):
+    email = normalize_email(user.email)
+
+    try:
+        if BYPASS_SUPABASE_AUTH:
+            raise HTTPException(
+                status_code=501,
+                detail="Login is not available when BYPASS_SUPABASE_AUTH is enabled"
+            )
+
+        # Ask Supabase Auth to sign in
+        auth_response = supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": user.password
+        })
+
+        # If no user/session comes back, credentials are wrong
+        if not auth_response.user or not auth_response.session:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+
+        access_token = auth_response.session.access_token
+
+        # Store token in an HTTP cookie
+        response.set_cookie(
+            key=ACCESS_TOKEN_COOKIE,
+            value=access_token,
+            httponly=True,
+            secure=COOKIE_SECURE,
+            samesite=COOKIE_SAMESITE,
+            domain=COOKIE_DOMAIN,
+            max_age=60 * 60 * 24 * 7,
+            path="/"
+        )
+
+        
+        db = await get_db()
+        try:
+            db_user = await db.fetchrow("""
+                SELECT id, email, first_name, last_name
+                FROM users
+                WHERE LOWER(email) = $1
+            """, email)
+        finally:
+            await db.close()
+
+        # Return success message
+        return {
+            "detail": "Login successful",
+            "user": {
+                "id": str(db_user["id"]) if db_user else auth_response.user.id,
+                "email": db_user["email"] if db_user else auth_response.user.email,
+                "first_name": db_user["first_name"] if db_user else None,
+                "last_name": db_user["last_name"] if db_user else None,
+            }
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        error_message = str(e).lower()
+
+        if "invalid login credentials" in error_message:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+
+        if "email not confirmed" in error_message:
+            raise HTTPException(
+                status_code=401,
+                detail="Please verify your email before logging in"
+            )
+
+        if "invalid api key" in error_message or "apikey" in error_message:
+            raise HTTPException(
+                status_code=500,
+                detail="Supabase API key is misconfigured on the server"
+            )
+
+        #  unexpected server error
+        print(f"Login error: {e}")
+        raise HTTPException(status_code=500, detail="Login failed")
