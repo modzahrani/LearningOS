@@ -20,3 +20,7 @@ class User(BaseModel):
     agree_terms: bool
     name: Optional[str] = None
     created_at: datetime
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
