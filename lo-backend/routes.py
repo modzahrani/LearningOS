@@ -7,6 +7,7 @@ from db import get_db
 from auth import verify_token
 from models.models import UserCreate
 from models.models import UserLogin
+from models.models import PathSelect
 from supabase import create_client
 
 # --- Load environment variables ---
@@ -245,3 +246,141 @@ async def login_user(user: UserLogin, response: Response):
         #  unexpected server error
         print(f"Login error: {e}")
         raise HTTPException(status_code=500, detail="Login failed")
+    
+    
+# --- select-path  ---
+
+@router.post("/select-path")
+async def select_path(
+    payload: PathSelect,
+    user_id: str = Depends(verify_token)
+):
+  
+
+    db = await get_db()
+    try:
+        # --- save path or update if
+        #  the user has path ---
+
+        row = await db.fetchrow("""
+            INSERT INTO user_profiles (id, role)
+            VALUES ($1, $2)
+            ON CONFLICT (id)
+            DO UPDATE SET role = EXCLUDED.role
+            RETURNING id, role, difficulty
+        """, user_id, payload.role)
+
+        return {
+            "detail": "Path saved successfully",
+            "profile": {
+                "id": str(row["id"]),
+                "role": row["role"],
+                "difficulty": row["difficulty"],
+            }
+        }
+
+    except Exception as e:
+        print(f"Select path error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save selected path")
+    finally:
+        await db.close()
+
+
+
+    #--Return the selected path  for the  user--
+@router.get("/selected-path")
+async def get_selected_path(user_id: str = Depends(verify_token)):
+  
+
+    db = await get_db()
+    try:
+        row = await db.fetchrow("""
+            SELECT id, role, difficulty
+            FROM user_profiles
+            WHERE id = $1
+        """, user_id)
+
+        if not row:
+            raise HTTPException(status_code=404, detail="User profile not found")
+
+        return {
+            "id": str(row["id"]),
+            "role": row["role"],
+            "difficulty": row["difficulty"],
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Get selected path error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch selected path")
+    finally:
+        await db.close()
+
+
+
+      #-- temp test to add the path will remove after verification in auth.verify_token is fixed--
+
+@router.post("/select-path-test")
+async def select_path_test(payload: PathSelect):
+  
+#-- this user id is from supabase
+    test_user_id = "66fb00ee-3bb3-40f4-96c1-f9431c407ee5"
+
+    db = await get_db()
+    try:
+        row = await db.fetchrow("""
+            INSERT INTO user_profiles (id, role)
+            VALUES ($1, $2)
+            ON CONFLICT (id)
+            DO UPDATE SET role = EXCLUDED.role
+            RETURNING id, role, difficulty
+        """, test_user_id, payload.role)
+
+        return {
+            "detail": "Path saved successfully (test route)",
+            "profile": {
+                "id": str(row["id"]),
+                "role": row["role"],
+                "difficulty": row["difficulty"],
+            }
+        }
+
+    except Exception as e:
+        print(f"Select path test error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save selected path")
+    finally:
+        await db.close()
+
+
+      #-- temp test to read the path  will remove after verification in auth.verify_token is fixed--
+@router.get("/selected-path-test")
+async def get_selected_path_test():
+ 
+#-- this user id is from supabase 
+    test_user_id = "66fb00ee-3bb3-40f4-96c1-f9431c407ee5"
+
+    db = await get_db()
+    try:
+        row = await db.fetchrow("""
+            SELECT id, role, difficulty
+            FROM user_profiles
+            WHERE id = $1
+        """, test_user_id)
+
+        if not row:
+            raise HTTPException(status_code=404, detail="User profile not found")
+
+        return {
+            "id": str(row["id"]),
+            "role": row["role"],
+            "difficulty": row["difficulty"],
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Get selected path test error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch selected path")
+    finally:
+        await db.close()
