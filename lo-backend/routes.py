@@ -201,6 +201,7 @@ async def login_user(user: UserLogin, response: Response):
         )
 
         
+        db_user = None
         db = await get_db()
         try:
             db_user = await db.fetchrow("""
@@ -208,6 +209,9 @@ async def login_user(user: UserLogin, response: Response):
                 FROM users
                 WHERE LOWER(email) = $1
             """, email)
+        except Exception as db_error:
+            # Supabase auth succeeded; treat local profile lookup as best-effort.
+            print(f"Login profile lookup warning: {db_error}")
         finally:
             await db.close()
 
@@ -215,7 +219,7 @@ async def login_user(user: UserLogin, response: Response):
         return {
             "detail": "Login successful",
             "user": {
-                "id": str(db_user["id"]) if db_user else auth_response.user.id,
+                "id": str(db_user["id"]) if db_user else str(auth_response.user.id),
                 "email": db_user["email"] if db_user else auth_response.user.email,
                 "first_name": db_user["first_name"] if db_user else None,
                 "last_name": db_user["last_name"] if db_user else None,
@@ -281,17 +285,15 @@ async def select_path(
 
     except Exception as e:
         print(f"Select path error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to save selected path")
+        raise HTTPException(status_code=500, detail="Failed to save selected path to database")
     finally:
         await db.close()
 
 
 
-    #--Return the selected path  for the  user--
 @router.get("/selected-path")
 async def get_selected_path(user_id: str = Depends(verify_token)):
   
-
     db = await get_db()
     try:
         row = await db.fetchrow("""
@@ -317,70 +319,3 @@ async def get_selected_path(user_id: str = Depends(verify_token)):
     finally:
         await db.close()
 
-
-
-      #-- temp test to add the path will remove after verification in auth.verify_token is fixed--
-
-@router.post("/select-path-test")
-async def select_path_test(payload: PathSelect):
-  
-#-- this user id is from supabase
-    test_user_id = "66fb00ee-3bb3-40f4-96c1-f9431c407ee5"
-
-    db = await get_db()
-    try:
-        row = await db.fetchrow("""
-            INSERT INTO user_profiles (id, role)
-            VALUES ($1, $2)
-            ON CONFLICT (id)
-            DO UPDATE SET role = EXCLUDED.role
-            RETURNING id, role, difficulty
-        """, test_user_id, payload.role)
-
-        return {
-            "detail": "Path saved successfully (test route)",
-            "profile": {
-                "id": str(row["id"]),
-                "role": row["role"],
-                "difficulty": row["difficulty"],
-            }
-        }
-
-    except Exception as e:
-        print(f"Select path test error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to save selected path")
-    finally:
-        await db.close()
-
-
-      #-- temp test to read the path  will remove after verification in auth.verify_token is fixed--
-@router.get("/selected-path-test")
-async def get_selected_path_test():
- 
-#-- this user id is from supabase 
-    test_user_id = "66fb00ee-3bb3-40f4-96c1-f9431c407ee5"
-
-    db = await get_db()
-    try:
-        row = await db.fetchrow("""
-            SELECT id, role, difficulty
-            FROM user_profiles
-            WHERE id = $1
-        """, test_user_id)
-
-        if not row:
-            raise HTTPException(status_code=404, detail="User profile not found")
-
-        return {
-            "id": str(row["id"]),
-            "role": row["role"],
-            "difficulty": row["difficulty"],
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Get selected path test error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch selected path")
-    finally:
-        await db.close()

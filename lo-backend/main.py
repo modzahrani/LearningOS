@@ -1,6 +1,11 @@
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
 import uvicorn
 from fastapi import FastAPI, Request
+
+load_dotenv(Path(__file__).resolve().parent / ".env")
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
@@ -49,7 +54,7 @@ async def unhandled_exception_handler(_: Request, exc: Exception):
     print(f"Unhandled server error: {exc}")
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error"},
+        content={"detail": "Internal server error unfortunately. Please try again later."},
     )
 
 

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from dotenv import load_dotenv
 import os
 import asyncpg
@@ -8,7 +10,7 @@ try:
 except Exception: 
     certifi = None
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 
 def _parse_bool(value: str | None, default: bool = True) -> bool:
@@ -36,7 +38,13 @@ async def get_db():
     if not database_url:
         raise RuntimeError("DATABASE_URL (or DB_URL) is not set")
 
-    return await asyncpg.connect(database_url, ssl=_build_ssl_context())
+    # Supabase pooler uses PgBouncer transaction pooling, which is incompatible
+    # with asyncpg prepared statement caching unless statement cache is disabled.
+    return await asyncpg.connect(
+        database_url,
+        ssl=_build_ssl_context(),
+        statement_cache_size=0,
+    )
     
     
     
