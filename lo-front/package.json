@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname 127.0.0.1 --port 3000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -16,6 +16,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.563.0",
     "next": "latest",
+    "radix-ui": "^1.4.3",
     "react": "latest",
     "react-dom": "latest",
     "tailwind-merge": "^3.4.0"

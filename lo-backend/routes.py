@@ -7,6 +7,7 @@ from db import get_db
 from auth import verify_token
 from models.models import UserCreate
 from models.models import UserLogin
+from models.models import PathSelect
 from supabase import create_client
 
 # --- Load environment variables ---
@@ -200,6 +201,7 @@ async def login_user(user: UserLogin, response: Response):
         )
 
         
+        db_user = None
         db = await get_db()
         try:
             db_user = await db.fetchrow("""
@@ -207,6 +209,9 @@ async def login_user(user: UserLogin, response: Response):
                 FROM users
                 WHERE LOWER(email) = $1
             """, email)
+        except Exception as db_error:
+            # Supabase auth succeeded; treat local profile lookup as best-effort.
+            print(f"Login profile lookup warning: {db_error}")
         finally:
             await db.close()
 
@@ -214,7 +219,7 @@ async def login_user(user: UserLogin, response: Response):
         return {
             "detail": "Login successful",
             "user": {
-                "id": str(db_user["id"]) if db_user else auth_response.user.id,
+                "id": str(db_user["id"]) if db_user else str(auth_response.user.id),
                 "email": db_user["email"] if db_user else auth_response.user.email,
                 "first_name": db_user["first_name"] if db_user else None,
                 "last_name": db_user["last_name"] if db_user else None,
@@ -245,3 +250,72 @@ async def login_user(user: UserLogin, response: Response):
         #  unexpected server error
         print(f"Login error: {e}")
         raise HTTPException(status_code=500, detail="Login failed")
+    
+    
+# --- select-path  ---
+
+@router.post("/select-path")
+async def select_path(
+    payload: PathSelect,
+    user_id: str = Depends(verify_token)
+):
+  
+
+    db = await get_db()
+    try:
+        # --- save path or update if
+        #  the user has path ---
+
+        row = await db.fetchrow("""
+            INSERT INTO user_profiles (id, role)
+            VALUES ($1, $2)
+            ON CONFLICT (id)
+            DO UPDATE SET role = EXCLUDED.role
+            RETURNING id, role, difficulty
+        """, user_id, payload.role)
+
+        return {
+            "detail": "Path saved successfully",
+            "profile": {
+                "id": str(row["id"]),
+                "role": row["role"],
+                "difficulty": row["difficulty"],
+            }
+        }
+
+    except Exception as e:
+        print(f"Select path error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save selected path to database")
+    finally:
+        await db.close()
+
+
+
+@router.get("/selected-path")
+async def get_selected_path(user_id: str = Depends(verify_token)):
+  
+    db = await get_db()
+    try:
+        row = await db.fetchrow("""
+            SELECT id, role, difficulty
+            FROM user_profiles
+            WHERE id = $1
+        """, user_id)
+
+        if not row:
+            raise HTTPException(status_code=404, detail="User profile not found")
+
+        return {
+            "id": str(row["id"]),
+            "role": row["role"],
+            "difficulty": row["difficulty"],
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Get selected path error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch selected path")
+    finally:
+        await db.close()
+
