@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress"
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 type PathOption = {
@@ -45,16 +45,32 @@ export default function PathSelectPage() {
     useState<PathOption["id"]>("individual");
   const [saved, setSaved] = useState(false);
 
-  const handleContinue = () => {
-    localStorage.setItem("learningos_selected_path", selectedPath);
-    setSaved(true);
-    console.log("Selected path:", selectedPath);
-  };
+  // select-path calling
+const handleContinue = async () => {
+  const res = await fetch("http://127.0.0.1:8000/select-path", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      role: selectedPath,
+    }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error(data.detail);
+    return;
+  }
+
+  console.log("saved to backend:", data);
+};
 
   return (
     <main className="min-h-screen bg-[#f5f7fb] px-4 py-8 md:px-8">
       <div className="mx-auto max-w-6xl">
-        {/* Top row */}
         <div className="mb-10 flex flex-col items-center justify-between gap-6 md:flex-row">
           <div className="w-full max-w-md">
             <div className="mb-2 flex items-center justify-between text-sm">
@@ -70,7 +86,7 @@ export default function PathSelectPage() {
             <button className="transition hover:text-slate-600">Login</button>
           </div>
         </div>
-        {/* Heading */}
+
         <div className="mb-10 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
             Choose your learning journal
@@ -81,7 +97,6 @@ export default function PathSelectPage() {
           </p>
         </div>
 
-        {/* Cards */}
         <div className="grid gap-6 md:grid-cols-3">
           {PATHS.map((path) => {
             const isSelected = selectedPath === path.id;
@@ -114,7 +129,7 @@ export default function PathSelectPage() {
                     className="h-48 w-full object-cover"
                   />
                 </div>
-                {/* radio circle */}
+
                 <div className="mt-4 flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-xl font-semibold text-slate-900">
@@ -141,16 +156,13 @@ export default function PathSelectPage() {
           })}
         </div>
 
-        {/* Continue button */}
         <div className="mt-14 flex flex-col items-center justify-center gap-4">
           <Button
             onClick={handleContinue}
             className="h-12 rounded-xl bg-blue-600 px-10 text-base font-semibold text-white hover:bg-blue-700"
           >
-            Continue →
+            Continue
           </Button>
-
-        
         </div>
       </div>
     </main>
