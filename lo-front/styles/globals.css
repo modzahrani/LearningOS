@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "prismjs/themes/prism-okaidia.css";
 
 @custom-variant dark (&:is(.dark *));
 
