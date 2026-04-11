@@ -11,7 +11,7 @@ import time
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET") 
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -34,6 +34,22 @@ def get_jwks():
     _jwks_cache["data"] = data
     _jwks_cache["expires_at"] = now + JWKS_CACHE_TTL_SECONDS
     return data
+
+def get_user_from_supabase(token: str) -> dict[str, Any]:
+    response = requests.get(
+        f"{SUPABASE_URL}/auth/v1/user",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "apikey": SUPABASE_KEY,
+        },
+        timeout=JWKS_REQUEST_TIMEOUT_SECONDS,
+    )
+
+    if response.status_code == 401:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    response.raise_for_status()
+    return response.json()
 
 def verify_token(
     authorization: Optional[str] = Header(None),
@@ -60,7 +76,11 @@ def verify_token(
                 break
         
         if not rsa_key:
-            raise HTTPException(status_code=401, detail="Unable to find appropriate key")
+            user_data = get_user_from_supabase(token)
+            user_id = user_data.get("id")
+            if not user_id:
+                raise HTTPException(status_code=401, detail="Invalid token")
+            return str(user_id)
         
         decoded = jwt.decode(
             token,
@@ -77,6 +97,8 @@ def verify_token(
     except JWTError as e:
         print(f"JWT Error: {e}")
         raise HTTPException(status_code=401, detail="Invalid token")
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Token verification error: {e}")
         raise HTTPException(status_code=401, detail="Token verification failed")
