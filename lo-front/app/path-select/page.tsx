@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils";
+import {saveSelectedPath } from "@/api/pathProvider";
+import { toast } from "sonner";
 
 type PathOption = {
   id: "student" | "individual" | "enterprise";
@@ -41,14 +44,24 @@ const PATHS: PathOption[] = [
 ];
 
 export default function PathSelectPage() {
+  const router = useRouter();
   const [selectedPath, setSelectedPath] =
     useState<PathOption["id"]>("individual");
-  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const handleContinue = () => {
-    localStorage.setItem("learningos_selected_path", selectedPath);
-    setSaved(true);
-    console.log("Selected path:", selectedPath);
+  const handleContinue = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await saveSelectedPath(selectedPath);
+      localStorage.setItem("learningos_selected_path", selectedPath);
+      toast.success("Path saved successfully");
+      router.push("/questionnaire");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save path");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -66,8 +79,18 @@ export default function PathSelectPage() {
           </div>
 
           <div className="flex items-center gap-6 text-sm text-slate-400">
-            <button className="transition hover:text-slate-600">Help</button>
-            <button className="transition hover:text-slate-600">Login</button>
+            <button
+              className="transition hover:text-slate-600"
+              onClick={() => router.push("/register")}
+            >
+              Help
+            </button>
+            <button
+              className="transition hover:text-slate-600"
+              onClick={() => router.push("/login")}
+            >
+              Login
+            </button>
           </div>
         </div>
         {/* Heading */}
@@ -92,8 +115,8 @@ export default function PathSelectPage() {
                 type="button"
                 onClick={() => {
                   setSelectedPath(path.id);
-                  setSaved(false);
                 }}
+                disabled={saving}
                 className={cn(
                   "relative rounded-2x1 border bg-white p-4 text-left shadow-sm transition-all hover:shadow-md",
                   isSelected
@@ -145,12 +168,11 @@ export default function PathSelectPage() {
         <div className="mt-14 flex flex-col items-center justify-center gap-4">
           <Button
             onClick={handleContinue}
+            disabled={saving}
             className="h-12 rounded-xl bg-blue-600 px-10 text-base font-semibold text-white hover:bg-blue-700"
           >
-            Continue →
+            {saving ? "Saving..." : "Continue →"}
           </Button>
-
-        
         </div>
       </div>
     </main>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope  } from "next/font/google";
 import "../styles/globals.css";
+import { Toaster } from "sonner";
 
 const geistSans = Manrope({
   variable: "--font-geist-sans",
@@ -28,6 +29,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <Toaster richColors position="top-right" />
       </body>
     </html>
   );
