@@ -29,3 +29,16 @@ class UserLogin(BaseModel):
 
 class PathSelect(BaseModel):
     role: Literal["student", "individual", "enterprise"]
+    
+class StartQuizRequest(BaseModel):
+    user_profile: str
+
+class AnswerRequest(BaseModel):
+    session_id: str
+    selected_index: int
+    
+class Question(BaseModel):
+    question: str
+    options: list[str]
+    correct_index: int
+    explanation: str

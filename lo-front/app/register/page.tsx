@@ -1,4 +1,12 @@
+"use client";
+
+import type { FormEvent } from "react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import axios from "axios";
 import { Manrope } from "next/font/google";
+import { register } from "@/api/userProvider";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -6,8 +14,115 @@ const manrope = Manrope({
 });
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [agree, setAgree] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  const passwordChecks = useMemo(
+    () => ({
+      minLength: password.length >= 8,
+      hasUpper: /[A-Z]/.test(password),
+      hasLower: /[a-z]/.test(password),
+      hasNumber: /\d/.test(password),
+      hasSpecial: /[^A-Za-z0-9]/.test(password),
+    }),
+    [password]
+  );
+
+  const checksPassedCount = Object.values(passwordChecks).filter(Boolean).length;
+  const strengthPercent = Math.round((checksPassedCount / 5) * 100);
+
+  const missingRequirements = [
+    !passwordChecks.minLength && "At least 8 characters",
+    !passwordChecks.hasUpper && "One uppercase letter",
+    !passwordChecks.hasLower && "One lowercase letter",
+    !passwordChecks.hasNumber && "One number",
+    !passwordChecks.hasSpecial && "One special character",
+  ].filter(Boolean) as string[];
+
+  const getFriendlyError = (err: unknown, fallback: string): string => {
+    if (axios.isAxiosError(err)) {
+      const status = err.response?.status;
+      const detail = err.response?.data?.detail;
+      const raw = typeof detail === "string" ? detail : err.message || "";
+      const message = raw.trim();
+      const lower = message.toLowerCase();
+
+      if (status === 409 || lower.includes("already exists")) {
+        return "This email is already registered. Please log in instead.";
+      }
+      if (status === 429 || lower.includes("rate-limit")) {
+        return "Too many requests. Please wait a bit and try again.";
+      }
+      if (lower.includes("network") || !status) {
+        return "Network issue. Please check your connection and try again.";
+      }
+      if (status && status >= 500) {
+        return "Server issue during registration. Please try again in a moment.";
+      }
+      return message || fallback;
+    }
+
+    if (err instanceof Error && err.message?.trim()) {
+      return err.message.trim();
+    }
+    return fallback;
+  };
+
+  const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (loading) return;
+    if (!firstName || !lastName || !email || !password) {
+      setError("Please fill all required fields.");
+      return;
+    }
+    if (!agree) {
+      setError("You must agree to the terms and privacy policy.");
+      return;
+    }
+    if (missingRequirements.length > 0) {
+      setError(`Password requirements missing: ${missingRequirements.join(", ")}`);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await register({
+        email,
+        password,
+        first_name: firstName,
+        last_name: lastName,
+        agree_terms: agree,
+      });
+      setSuccessToast("Registration successful. Confirm your email.");
+      setTimeout(() => {
+        router.push("/login");
+      }, 1200);
+    } catch (err) {
+      setError(
+        getFriendlyError(
+          err,
+          "Unexpected error during registration. Please try again."
+        )
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className={`${manrope.variable} font-sans flex w-full h-screen`}>
+      {successToast && (
+        <div className="fixed right-4 top-4 z-50 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg">
+          {successToast}
+        </div>
+      )}
       
       {/* Top-left logo + title */}
       <div className="flex items-center absolute top-2 left-1 z-20">
@@ -37,7 +152,9 @@ export default function RegisterPage() {
           {/* Already have an account */}
           <div className="absolute top-4 right-4 text-right z-20">
             <span className="text-gray-500 text-sm">Already have an account? </span>
-            <a href="#" className="text-blue-600 font-bold text-sm ml-1">Log in</a>
+            <Link href="/login" className="text-blue-600 font-bold text-sm ml-1">
+              Log in
+            </Link>
           </div>
 
           {/* Create Account Header */}
@@ -50,11 +167,11 @@ export default function RegisterPage() {
 
           {/* Social Login */}
           <div className="grid grid-cols-2 gap-4 mb-6">
-            <button className="border h-12 rounded-lg flex items-center justify-center gap-2 bg-white">
+            <button type="button" className="border h-12 rounded-lg flex items-center justify-center gap-2 bg-white">
               <img src="/assets/google-logo.png" alt="Google Logo" className="w-5 h-5"/>
               Google
             </button>
-            <button className="border h-12 rounded-lg flex items-center justify-center gap-2 bg-white">
+            <button type="button" className="border h-12 rounded-lg flex items-center justify-center gap-2 bg-white">
               <img src="/assets/microsoft-logo.png" alt="Microsoft Logo" className="w-5 h-5"/>
               Microsoft
             </button>
@@ -74,17 +191,29 @@ export default function RegisterPage() {
 </div>
 
           {/* Form */}
-          <form className="space-y-4 mt-2">
+          <form className="space-y-4 mt-2" onSubmit={handleRegister}>
 
             {/* Name Fields */}
             <div className="flex gap-4">
               <div className="flex flex-col flex-1">
                 <label className="text-sm font-semibold mb-1">First Name</label>
-                <input className="border rounded-lg h-12 px-4 w-full" placeholder="Jane"/>
+                <input
+                  className="border rounded-lg h-12 px-4 w-full"
+                  placeholder="Jane"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                />
               </div>
               <div className="flex flex-col flex-1">
                 <label className="text-sm font-semibold mb-1">Last Name</label>
-                <input className="border rounded-lg h-12 px-4 w-full" placeholder="Doe"/>
+                <input
+                  className="border rounded-lg h-12 px-4 w-full"
+                  placeholder="Doe"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                />
               </div>
             </div>
 
@@ -95,6 +224,9 @@ export default function RegisterPage() {
                 type="email"
                 placeholder="jane@company.com"
                 className="w-full h-12 pl-11 pr-4 rounded-xl  border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all "
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
               />
               
               <img
@@ -110,7 +242,11 @@ export default function RegisterPage() {
               <input
                 type="password"
                 placeholder="Min. 8 characters"
-                className="w-full h-12 pl-11 pr-4 rounded-xl  border border-slate-200  focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all " />
+                className="w-full h-12 pl-11 pr-4 rounded-xl  border border-slate-200  focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all "
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
               
               
               <img
@@ -121,25 +257,49 @@ export default function RegisterPage() {
             </div>
 
             {/* Password Strength */}
-            <div className="flex gap-1 mt-1">
-              <div className="h-1 flex-1 rounded-full bg-emerald-500"></div>
-              <div className="h-1 flex-1 rounded-full bg-emerald-500"></div>
-              <div className="h-1 flex-1 rounded-full bg-gray-200"></div>
-              <div className="h-1 flex-1 rounded-full bg-gray-200"></div>
+            <div className="mt-1">
+              <div className="mb-2 flex gap-1">
+                {[0, 1, 2, 3, 4].map((idx) => (
+                  <div
+                    key={idx}
+                    className={`h-1 flex-1 rounded-full ${
+                      idx < checksPassedCount ? "bg-emerald-500" : "bg-gray-200"
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-gray-500">{strengthPercent}% strength</p>
+              {password.length > 0 && missingRequirements.length > 0 && (
+                <p className="mt-1 text-xs text-amber-600">
+                  Missing: {missingRequirements.join(", ")}
+                </p>
+              )}
             </div>
 
             {/* Terms Checkbox */}
             <div className="flex items-center gap-2 mt-2">
-              <input type="checkbox" id="terms" className="w-4 h-4 text-blue-600 border-gray-300 rounded"/>
+              <input
+                type="checkbox"
+                id="terms"
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+                checked={agree}
+                onChange={(e) => setAgree(e.target.checked)}
+                required
+              />
               <label htmlFor="terms" className="text-sm text-gray-500">
                 I agree to the <a href="#" className="text-blue-600">Terms</a> and <a href="#" className="text-blue-600">Privacy Policy</a>.
               </label>
             </div>
 
-            <button className="w-full h-12 bg-blue-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2">
-              Create Account
+            <button
+              className="w-full h-12 bg-blue-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "Creating..." : "Create Account"}
             </button>
           </form>
+          {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
         </div>
       </div>
     </div>
