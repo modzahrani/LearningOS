@@ -8,7 +8,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
 
-DOCS_FOLDER = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "docs"))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DOCS_FOLDER = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "docs"))
+DEFAULT_CSV_PATH = os.path.join(SCRIPT_DIR, "videos.csv")
 
 
 
@@ -149,7 +151,7 @@ if __name__ == "__main__":
     parser.add_argument("--mode", choices=["single", "batch"], default="batch")
     parser.add_argument("--url", type=str, help="Single YouTube URL")
     parser.add_argument("--filename", type=str, help="Output filename")
-    parser.add_argument("--csv", type=str, default="lo-backend/tools/videos.csv", help="Path to CSV file")
+    parser.add_argument("--csv", type=str, default=DEFAULT_CSV_PATH, help="Path to CSV file")
     parser.add_argument("--workers", type=int, default=4, help="Parallel workers")
     args = parser.parse_args()
 
