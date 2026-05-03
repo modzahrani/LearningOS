@@ -36,7 +36,12 @@ async def get_db():
     if not database_url:
         raise RuntimeError("DATABASE_URL (or DB_URL) is not set")
 
-    return await asyncpg.connect(database_url, ssl=_build_ssl_context())
+    statement_cache_size = int(os.getenv("DB_STATEMENT_CACHE_SIZE", "0"))
+    return await asyncpg.connect(
+        database_url,
+        ssl=_build_ssl_context(),
+        statement_cache_size=statement_cache_size,
+    )
     
     
     

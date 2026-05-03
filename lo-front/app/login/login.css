@@ -194,3 +194,9 @@
   cursor:pointer;
   font-weight:500;
 }
+
+.error-text{
+  margin-top:10px;
+  color:#dc2626;
+  font-size:13px;
+}

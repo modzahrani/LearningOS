@@ -3,6 +3,8 @@ from uuid import UUID
 from datetime import datetime
 from enum import Enum
 from typing import Optional
+from typing import Literal
+
 
 # User Models
 class UserCreate(BaseModel):
@@ -24,3 +26,19 @@ class User(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
+
+class PathSelect(BaseModel):
+    role: Literal["student", "individual", "enterprise"]
+    
+class StartQuizRequest(BaseModel):
+    user_profile: str
+
+class AnswerRequest(BaseModel):
+    session_id: str
+    selected_index: int
+    
+class Question(BaseModel):
+    question: str
+    options: list[str]
+    correct_index: int
+    explanation: str

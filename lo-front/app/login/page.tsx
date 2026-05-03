@@ -1,7 +1,70 @@
 "use client";
 import "./login.css";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import axios from "axios";
+import { login } from "@/api/userProvider";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const getFriendlyError = (err: unknown, fallback: string): string => {
+    if (axios.isAxiosError(err)) {
+      const status = err.response?.status;
+      const detail = err.response?.data?.detail;
+      const raw = typeof detail === "string" ? detail : err.message || "";
+      const message = raw.trim();
+      const lower = message.toLowerCase();
+
+      if (status === 400) {
+        if (lower.includes("invalid email")) {
+          return "Email format looks invalid. Please check and try again.";
+        }
+        return "Please check your email and password format, then try again.";
+      }
+      if (status === 401 || lower.includes("invalid email or password")) {
+        return "Email or password is incorrect. Please try again.";
+      }
+      if (lower.includes("email not confirmed") || lower.includes("verify your email")) {
+        return "Your email is not confirmed yet. Check your inbox and verify your account.";
+      }
+      if (lower.includes("network") || !status) {
+        return "Network issue. Please check your connection and try again.";
+      }
+      if (status && status >= 500) {
+        return "Server issue while logging in. Please try again in a moment.";
+      }
+      return message || fallback;
+    }
+
+    if (err instanceof Error && err.message?.trim()) {
+      return err.message.trim();
+    }
+    return fallback;
+  };
+
+  const handleLogin = async () => {
+    if (loading) return;
+    if (!email || !password) {
+      setError("Email and password are required.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await login({ email, password });
+      router.push("/path-select");
+    } catch (err) {
+      setError(getFriendlyError(err, "Unexpected error during login. Please try again."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="container">
 
@@ -66,7 +129,12 @@ export default function LoginPage() {
 
           <div className="input-group">
   <label>Email address</label>
-  <input type="email" placeholder="example@email.com" />
+  <input
+    type="email"
+    placeholder="example@email.com"
+    value={email}
+    onChange={(e) => setEmail(e.target.value)}
+  />
 </div>
 
 <div className="input-group">
@@ -77,6 +145,8 @@ export default function LoginPage() {
       type="password"
       placeholder="Enter your password"
       id="password"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
     />
 
     <span
@@ -105,15 +175,31 @@ export default function LoginPage() {
   </div>
 </div>
 
-          <button className="login-btn">Log in</button>
+          <button
+            className="login-btn"
+            onClick={handleLogin}
+            disabled={loading}
+          >
+            {loading ? "Logging in..." : "Log in"}
+          </button>
 
           <div className="links">
             <p className="signup-text">
-                Don't have an account?
-                <span className="create-account"> Create an account</span>
+                Don&apos;t have an account?
+                <span
+                  className="create-account"
+                  onClick={() => router.push("/register")}
+                >
+                  {" "}
+                  Create an account
+                </span>
                 </p>
-            <p className="create-account">Forgot password?</p>
+            <p className="create-account" onClick={() => router.push("/register")}>
+              Forgot password?
+            </p>
           </div>
+
+          {error && <p className="error-text">{error}</p>}
 
         </div>
 
