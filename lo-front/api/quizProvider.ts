@@ -7,6 +7,18 @@ export interface QuizQuestion {
   options: string[];
 }
 
+export interface AssignedLesson {
+  source: string;
+  topic: string;
+  format: string;
+  level: number;
+  role: string;
+  chunk_count: number;
+  completed_chunks: number;
+  progress?: number;
+  status: "assigned" | "in_progress" | "completed";
+}
+
 export interface QuizStartResponse {
   quiz_id: string;
   question: QuizQuestion;
@@ -30,6 +42,8 @@ export interface QuizAnswerResponse {
   progress_percent: number;
   explanation?: string | null;
   question?: QuizQuestion | null;
+  assigned_level?: number | null;
+  assigned_lessons?: AssignedLesson[] | null;
 }
 
 // ==================== QUIZ OPERATIONS ====================

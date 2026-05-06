@@ -1,6 +1,6 @@
+import asyncio
 import os 
 import json
-import time
 import google.generativeai as genai
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
@@ -20,32 +20,33 @@ FALLBACK_QUESTION = {
 }
 
 async def generate_question(profile,difficulty,history, max_retries: int = 3):
-    prompt = f""" 
-    You are an AI quiz generator for a learning platform. the platforn is about Learning whats an AI,
-    so your questions should be focused on AI concepts, history, applications, and ethics.
-    we have 3 roles (student, individual, enterprise) and the user can select one of them,
-    so you should tailor the questions to the selected role.
-    
-    The user has the following profile: {profile}.
-    diffuculty level: {difficulty}/10.
-    
-    Previous questions:
-    {history}
-    Generate a NEW multiple-choice questions.
-    
-    Rules:
-    - do not repeat topics.
-    - 4 options per question.
-    - make it appropriate to the difficulty level.
-    - return STRICT json only format (no text outside the json).
-    
-    Format:
-    {{
-        "question":"...",
-        "options":["A","B","C","D"],
-        "correct_index": 0,
-        "explanation":"..."
-    }} """
+    role = str(profile.get("role", "student"))
+    recent_history = history[-4:] if isinstance(history, list) else []
+
+    prompt = f"""
+You generate one AI learning quiz question.
+
+Context:
+- Learner role: {role}
+- Difficulty: {difficulty}/10
+- Recent questions to avoid repeating: {recent_history}
+
+Requirements:
+- Topic must be about AI concepts, history, applications, ethics, or machine learning basics.
+- Tailor wording to the learner role.
+- Do not repeat the recent questions.
+- Return exactly 4 options.
+- Match the difficulty level.
+- Return strict JSON only.
+
+JSON format:
+{{
+  "question": "...",
+  "options": ["...", "...", "...", "..."],
+  "correct_index": 0,
+  "explanation": "..."
+}}
+""".strip()
     
     last_error = None
     for attempt in range(max_retries):
@@ -60,7 +61,7 @@ async def generate_question(profile,difficulty,history, max_retries: int = 3):
         except Exception as e:
             last_error = e
             print("Error generating question:", e)
-            time.sleep(0.5 * (attempt + 1))
+            await asyncio.sleep(0.5 * (attempt + 1))
 
     # Fallback to a safe static question if model is unavailable.
     print(f"Quiz_agent: falling back to static question after {max_retries} failed attempts: {last_error}")

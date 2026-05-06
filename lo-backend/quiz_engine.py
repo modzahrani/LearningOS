@@ -12,10 +12,12 @@ QUESTION_CACHE_TTL_SECONDS = 86400
 
 
 def _active_session_key(user_id: str) -> str:
+    # Stores the currently resumable questionnaire session per user.
     return f"quiz:active:{user_id}"
 
 
 def _validate_question(q: Dict[str, Any]) -> Dict[str, Any]:
+    # Guard the route layer from malformed model output.
     if not isinstance(q, dict):
         raise ValueError("Question payload must be a dict")
     if "question" not in q or not isinstance(q["question"], str):
@@ -34,6 +36,8 @@ async def create_session(profile: Dict[str, Any]) -> str:
         starting_difficulty = int(starting_difficulty)
     except Exception:
         starting_difficulty = 1
+    # Questionnaire difficulty adapts on a 1-10 scale and is separate from the
+    # final learner level, which is mapped later to the platform's 1-3 range.
     starting_difficulty = max(1, min(10, starting_difficulty))
     
     session = {
@@ -42,6 +46,7 @@ async def create_session(profile: Dict[str, Any]) -> str:
         "score": 0,
         "step": 0,
         "history": [],
+        "answers": [],
         "current_question": None,
     }
     
@@ -81,6 +86,8 @@ def clear_active_session(user_id: str) -> None:
 
 
 def _question_cache_key(session: Dict[str, Any], next_step: int) -> str:
+    # Cache keys include role, current difficulty, step, and recent history so
+    # repeated requests can reuse the same generated question safely.
     profile = session.get("profile", {}) or {}
     user_id = profile.get("id")
     if user_id:
@@ -90,7 +97,15 @@ def _question_cache_key(session: Dict[str, Any], next_step: int) -> str:
             json.dumps(profile, sort_keys=True).encode("utf-8")
         ).hexdigest()[:16]
     role = str(profile.get("role", "unknown"))
-    return f"quiz:question:{user_part}:{role}:step:{next_step}"
+    difficulty = int(session.get("difficulty", 1))
+    recent_history = session.get("history", [])[-4:]
+    history_part = hashlib.sha1(
+        json.dumps(recent_history, sort_keys=True).encode("utf-8")
+    ).hexdigest()[:12]
+    return (
+        f"quiz:question:{user_part}:{role}:difficulty:{difficulty}:"
+        f"step:{next_step}:history:{history_part}"
+    )
 
 
 async def next_question(session: Dict[str, Any]) -> Dict[str, Any]:
@@ -101,6 +116,8 @@ async def next_question(session: Dict[str, Any]) -> Dict[str, Any]:
     if cached:
         q = _validate_question(json.loads(cached))
     else:
+        # The generator sees the learner profile plus the current adaptive
+        # difficulty and question history.
         q = await generate_question(
             session["profile"], session["difficulty"], session["history"]
         )
@@ -118,6 +135,35 @@ def evaluate_answer(session: Dict[str, Any], selected_index: int) -> tuple[bool,
     if not q:
         raise ValueError("No current question in session")
     correct = selected_index == q["correct_index"]
+    options = q.get("options", [])
+    selected_answer = (
+        options[selected_index]
+        if isinstance(options, list) and 0 <= selected_index < len(options)
+        else None
+    )
+    correct_answer = (
+        options[q["correct_index"]]
+        if isinstance(options, list) and 0 <= q["correct_index"] < len(options)
+        else None
+    )
+
+    session.setdefault("answers", []).append(
+        {
+            "step": session.get("step", 0),
+            "question": q.get("question"),
+            "selected_index": selected_index,
+            "selected_answer": selected_answer,
+            "correct_index": q.get("correct_index"),
+            "correct_answer": correct_answer,
+            "correct": correct,
+            "explanation": q.get("explanation"),
+            "difficulty_before_answer": session.get("difficulty"),
+        }
+    )
+
+    # Correct answers make subsequent questions harder; incorrect answers make
+    # them easier. The final assigned level is calculated elsewhere from total
+    # score after the full quiz is complete.
     if correct:
         session["score"] += 1
         session["difficulty"] = min(session["difficulty"] + 1, 10)

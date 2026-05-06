@@ -5,18 +5,23 @@
 .container{
   display:flex;
   height:100vh;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  background: var(--background);
+  color: var(--foreground);
 }
 
 /* LEFT */
 
 .left{
   width:50%;
-  background:linear-gradient(135deg,#e5ebf5,#f5f7fb);
+  background:
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.18), transparent 34%),
+    linear-gradient(135deg, color-mix(in oklab, var(--background) 88%, #dbeafe 12%), color-mix(in oklab, var(--card) 92%, #eff6ff 8%));
   padding:80px;
   display:flex;
   flex-direction:column;
   justify-content:center;
+  border-right:1px solid var(--border);
 }
 
 .left h1{
@@ -29,7 +34,7 @@
 }
 
 .left p{
-  color:#555;
+  color:var(--muted-foreground);
   width:70%;
   line-height:1.6;
 }
@@ -41,10 +46,19 @@
   display:flex;
   justify-content:center;
   align-items:center;
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 14%, transparent), transparent 24%),
+    linear-gradient(160deg, color-mix(in oklab, var(--background) 96%, #f8fbff 4%), color-mix(in oklab, var(--muted) 78%, transparent));
 }
 
 .login-box{
   width:350px;
+  background: color-mix(in oklab, var(--card) 92%, transparent);
+  border:1px solid var(--border);
+  border-radius:24px;
+  padding:32px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(18px);
 }
 
 .login-box h2{
@@ -53,7 +67,7 @@
 }
 
 .subtitle{
-  color:#777;
+  color:var(--muted-foreground);
   margin-bottom:20px;
 }
 
@@ -68,8 +82,9 @@
 .social-btn{
   flex:1;
   padding:10px;
-  border:1px solid #ddd;
-  background:white;
+  border:1px solid var(--border);
+  background:var(--card);
+  color:var(--foreground);
   border-radius:8px;
   cursor:pointer;
 
@@ -80,7 +95,12 @@
 }
 
 .social-btn:hover{
-  background:#f5f5f5;
+  background:color-mix(in oklab, var(--muted) 88%, var(--card));
+}
+
+.social-btn:disabled{
+  cursor:not-allowed;
+  opacity:0.6;
 }
 
 /* DIVIDER */
@@ -97,13 +117,13 @@
 .divider::after{
   content:"";
   flex:1;
-  border-bottom:1px solid #ccc;
+  border-bottom:1px solid var(--border);
 }
 
 .divider span{
   padding:0 10px;
   font-size:12px;
-  color:#777;
+  color:var(--muted-foreground);
 }
 
 /* INPUTS */
@@ -116,22 +136,27 @@
   font-weight:bold;
   margin-bottom:6px;
   font-size:14px;
+  color:var(--foreground);
 }
 
 .input-group input{
   width:100%;
   padding:12px;
-  border:1px solid #ddd;
+  border:1px solid var(--input);
   border-radius:8px;
+  background:var(--background);
+  color:var(--foreground);
 }
 
 .login-box input{
   width:100%;
   padding:12px;
-  border:1px solid #ddd;
+  border:1px solid var(--input);
   border-radius:8px;
   margin-bottom:15px;
-   font-size:14px;
+  font-size:14px;
+  background:var(--background);
+  color:var(--foreground);
 }
 
 .password-field{
@@ -142,8 +167,18 @@
   width:100%;
   padding:12px;
   padding-right:45px;
-  border:1px solid #ddd;
+  border:1px solid var(--input);
   border-radius:8px;
+}
+
+.login-box input::placeholder{
+  color:var(--muted-foreground);
+}
+
+.login-box input:focus{
+  outline:none;
+  border-color:#2563eb;
+  box-shadow:0 0 0 3px rgba(37, 99, 235, 0.14);
 }
 
 .eye{
@@ -155,7 +190,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #777;
+  color: var(--muted-foreground);
 }
 
 /* LOGIN BUTTON */
@@ -176,6 +211,11 @@
   background:#1d4ed8;
 }
 
+.login-btn:disabled{
+  cursor:not-allowed;
+  opacity:0.7;
+}
+
 /* LINKS */
 
 .links{
@@ -183,10 +223,8 @@
   font-size:14px;
 }
 
-
-
 .signup-text{
-  color:black;
+  color:var(--foreground);
 }
 
 .create-account{
@@ -199,4 +237,38 @@
   margin-top:10px;
   color:#dc2626;
   font-size:13px;
+}
+
+@media (max-width: 960px) {
+  .container{
+    flex-direction:column;
+    height:auto;
+    min-height:100vh;
+  }
+
+  .left,
+  .right{
+    width:100%;
+  }
+
+  .left{
+    padding:56px 28px 32px;
+  }
+
+  .left p{
+    width:100%;
+  }
+
+  .right{
+    padding:24px;
+  }
+
+  .login-box{
+    width:100%;
+    max-width:420px;
+  }
+
+  .divider{
+    margin-top:32px;
+  }
 }

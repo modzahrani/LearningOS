@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
 import { Manrope } from "next/font/google";
-import { register } from "@/api/userProvider";
+import { register, startOAuthLogin, type OAuthProvider } from "@/api/userProvider";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -21,6 +21,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [agree, setAgree] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [oauthProvider, setOauthProvider] = useState<OAuthProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
@@ -116,8 +117,29 @@ export default function RegisterPage() {
     }
   };
 
+  const handleOAuthLogin = async (provider: OAuthProvider) => {
+    if (loading || oauthProvider) return;
+
+    setOauthProvider(provider);
+    setError(null);
+
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      const response = await startOAuthLogin(provider, redirectTo);
+      window.location.href = response.data.url;
+    } catch (err) {
+      setError(
+        getFriendlyError(
+          err,
+          "Unexpected error while starting social login. Please try again."
+        )
+      );
+      setOauthProvider(null);
+    }
+  };
+
   return (
-    <div className={`${manrope.variable} font-sans flex w-full h-screen`}>
+    <div className={`${manrope.variable} font-sans flex min-h-screen w-full bg-background text-foreground`}>
       {successToast && (
         <div className="fixed right-4 top-4 z-50 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg">
           {successToast}
@@ -127,15 +149,15 @@ export default function RegisterPage() {
       {/* Top-left logo + title */}
       <div className="flex items-center absolute top-2 left-1 z-20">
         <img src="/assets/learningos-logo.png" alt="Logo" className="w-10 h-10 rounded-full"/>
-        <h1 className="text-xl font-bold ml-2">LearningOS</h1>
+        <h1 className="ml-2 text-xl font-bold text-foreground">LearningOS</h1>
       </div>
 
       {/* Left Panel */}
-      <div className="hidden lg:flex w-1/2 bg-white border-r p-16 flex-col justify-center relative">
-        <h1 className="text-5xl font-black leading-tight mb-6">
+      <div className="relative hidden w-1/2 flex-col justify-center border-r border-border bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.16),transparent_34%),linear-gradient(135deg,var(--background),color-mix(in_oklab,var(--card)_88%,#dbeafe_12%))] p-16 lg:flex">
+        <h1 className="mb-6 text-5xl font-black leading-tight text-foreground">
           Unlock Your Potential With AI
         </h1>
-        <p className="top-3 text-[#4C669A] text-lg mb-10 relative z-10">
+        <p className="relative top-3 z-10 mb-10 text-lg text-muted-foreground">
           Join us to master new skills with personalized paths and get started for free today.
         </p>
         <img
@@ -146,48 +168,49 @@ export default function RegisterPage() {
       </div>
 
       {/* Right Panel */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center bg-gray-100 relative">
-        <div className="w-[420px]">
+      <div className="relative flex w-full flex-col items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.12),transparent_28%),linear-gradient(160deg,var(--background),color-mix(in_oklab,var(--muted)_70%,transparent))] px-6 py-20 lg:w-1/2">
+        <div className="w-full max-w-[420px] rounded-[28px] border border-border bg-card/90 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur">
 
           {/* Already have an account */}
           <div className="absolute top-4 right-4 text-right z-20">
-            <span className="text-gray-500 text-sm">Already have an account? </span>
-            <Link href="/login" className="text-blue-600 font-bold text-sm ml-1">
+            <span className="text-sm text-muted-foreground">Already have an account? </span>
+            <Link href="/login" className="ml-1 text-sm font-bold text-blue-600">
               Log in
             </Link>
           </div>
 
           {/* Create Account Header */}
           <div className="flex items-center gap-3 mb-2 mt-12">
-            <h2 className="text-4xl font-bold">Create your account</h2>
+            <h2 className="text-4xl font-bold text-foreground">Create your account</h2>
           </div>
-          <p className="text-gray-500 mb-8">
+          <p className="mb-8 text-muted-foreground">
             Start your personalized learning journey today.
           </p>
 
           {/* Social Login */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <button type="button" className="border h-12 rounded-lg flex items-center justify-center gap-2 bg-white">
+          <div className="mb-6">
+            <button
+              type="button"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-border bg-background text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => handleOAuthLogin("google")}
+              disabled={loading || oauthProvider !== null}
+            >
               <img src="/assets/google-logo.png" alt="Google Logo" className="w-5 h-5"/>
-              Google
-            </button>
-            <button type="button" className="border h-12 rounded-lg flex items-center justify-center gap-2 bg-white">
-              <img src="/assets/microsoft-logo.png" alt="Microsoft Logo" className="w-5 h-5"/>
-              Microsoft
+              {oauthProvider === "google" ? "Connecting..." : "Google"}
             </button>
           </div>
 
           <div className="flex items-center">
   {/* Left Line */}
-  <div className="flex-grow h-px bg-gray-200"></div>
+  <div className="h-px flex-grow bg-border"></div>
 
   {/* YOUR TEXT GOES HERE */}
-  <span className="flex-shrink px-4 text-xs font-medium text-gray-400 uppercase tracking-widest">
+  <span className="flex-shrink px-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">
     OR REGISTER WITH EMAIL
   </span>
 
   {/* Right Line */}
-  <div className="flex-grow h-px bg-gray-200"></div>
+  <div className="h-px flex-grow bg-border"></div>
 </div>
 
           {/* Form */}
@@ -196,9 +219,9 @@ export default function RegisterPage() {
             {/* Name Fields */}
             <div className="flex gap-4">
               <div className="flex flex-col flex-1">
-                <label className="text-sm font-semibold mb-1">First Name</label>
+                <label className="mb-1 text-sm font-semibold text-foreground">First Name</label>
                 <input
-                  className="border rounded-lg h-12 px-4 w-full"
+                  className="h-12 w-full rounded-lg border border-input bg-background px-4 text-foreground outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-950"
                   placeholder="Jane"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
@@ -206,9 +229,9 @@ export default function RegisterPage() {
                 />
               </div>
               <div className="flex flex-col flex-1">
-                <label className="text-sm font-semibold mb-1">Last Name</label>
+                <label className="mb-1 text-sm font-semibold text-foreground">Last Name</label>
                 <input
-                  className="border rounded-lg h-12 px-4 w-full"
+                  className="h-12 w-full rounded-lg border border-input bg-background px-4 text-foreground outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-950"
                   placeholder="Doe"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
@@ -219,11 +242,11 @@ export default function RegisterPage() {
 
             {/* Email Field */}
             <div className="relative">
-              <label className="text-sm font-semibold mb-1">Work Email</label>
+              <label className="mb-1 text-sm font-semibold text-foreground">Work Email</label>
               <input
                 type="email"
                 placeholder="jane@company.com"
-                className="w-full h-12 pl-11 pr-4 rounded-xl  border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all "
+                className="h-12 w-full rounded-xl border border-input bg-background pl-11 pr-4 text-foreground outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-950"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -238,11 +261,11 @@ export default function RegisterPage() {
 
             {/* Password Field */}
             <div className="relative">
-              <label className="text-sm font-semibold mb-1">Password</label>
+              <label className="mb-1 text-sm font-semibold text-foreground">Password</label>
               <input
                 type="password"
                 placeholder="Min. 8 characters"
-                className="w-full h-12 pl-11 pr-4 rounded-xl  border border-slate-200  focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all "
+                className="h-12 w-full rounded-xl border border-input bg-background pl-11 pr-4 text-foreground outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-950"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -263,12 +286,12 @@ export default function RegisterPage() {
                   <div
                     key={idx}
                     className={`h-1 flex-1 rounded-full ${
-                      idx < checksPassedCount ? "bg-emerald-500" : "bg-gray-200"
+                      idx < checksPassedCount ? "bg-emerald-500" : "bg-border"
                     }`}
                   />
                 ))}
               </div>
-              <p className="text-xs text-gray-500">{strengthPercent}% strength</p>
+              <p className="text-xs text-muted-foreground">{strengthPercent}% strength</p>
               {password.length > 0 && missingRequirements.length > 0 && (
                 <p className="mt-1 text-xs text-amber-600">
                   Missing: {missingRequirements.join(", ")}
@@ -281,18 +304,18 @@ export default function RegisterPage() {
               <input
                 type="checkbox"
                 id="terms"
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+                className="h-4 w-4 rounded border-border text-blue-600"
                 checked={agree}
                 onChange={(e) => setAgree(e.target.checked)}
                 required
               />
-              <label htmlFor="terms" className="text-sm text-gray-500">
+              <label htmlFor="terms" className="text-sm text-muted-foreground">
                 I agree to the <a href="#" className="text-blue-600">Terms</a> and <a href="#" className="text-blue-600">Privacy Policy</a>.
               </label>
             </div>
 
             <button
-              className="w-full h-12 bg-blue-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 font-semibold text-white transition hover:bg-blue-700"
               type="submit"
               disabled={loading}
             >
