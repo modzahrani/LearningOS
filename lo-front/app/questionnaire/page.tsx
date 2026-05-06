@@ -75,6 +75,12 @@ export default function Questionnaire() {
       setProgress(data.progress_percent);
       setSelectedIndex(null);
 
+      if (data.finished) {
+        localStorage.removeItem(QUIZ_ID_STORAGE_KEY);
+        router.push("/lessons");
+        return;
+      }
+
       if (data.question) {
         setQuestion(data.question);
       } else {

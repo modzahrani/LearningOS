@@ -1,26 +1,6 @@
 import { API_BASE } from '../constants/endpoints';
 import axios from 'axios';
 
-const SESSION_TOKEN_KEY = 'session_token';
-let inMemoryAccessToken: string | null = null;
-
-const isBrowser = typeof window !== 'undefined';
-
-if (isBrowser) {
-  inMemoryAccessToken = window.sessionStorage.getItem(SESSION_TOKEN_KEY);
-}
-
-export const setSessionAccessToken = (token: string | null) => {
-  inMemoryAccessToken = token;
-  if (!isBrowser) return;
-
-  if (token) {
-    window.sessionStorage.setItem(SESSION_TOKEN_KEY, token);
-  } else {
-    window.sessionStorage.removeItem(SESSION_TOKEN_KEY);
-  }
-};
-
 export const apiClient = axios.create({
   baseURL: API_BASE,
   withCredentials: true,
@@ -30,12 +10,7 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use(
-  (config) => {
-    if (inMemoryAccessToken) {
-      config.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
-    }
-    return config;
-  },
+  (config) => config,
   (error) => Promise.reject(error)
 );
 
@@ -50,11 +25,20 @@ apiClient.interceptors.response.use(
       requestUrl.includes("/login") ||
       requestUrl.endsWith("login") ||
       requestUrl.includes("/register") ||
-      requestUrl.endsWith("register");
+      requestUrl.endsWith("register") ||
+      requestUrl.includes("/auth/logout") ||
+      requestUrl.endsWith("auth/logout") ||
+      requestUrl.includes("/auth/oauth/start") ||
+      requestUrl.endsWith("auth/oauth/start") ||
+      requestUrl.includes("/auth/oauth/session") ||
+      requestUrl.endsWith("auth/oauth/session") ||
+      requestUrl.includes("/auth/forgot-password") ||
+      requestUrl.endsWith("auth/forgot-password") ||
+      requestUrl.includes("/auth/reset-password") ||
+      requestUrl.endsWith("auth/reset-password");
 
     // Handle 401 Unauthorized - token expired or invalid
     if (error.response?.status === 401 && !isAuthRequest) {
-      setSessionAccessToken(null);
       window.location.href = '/login';
     }
     

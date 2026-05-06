@@ -25,17 +25,26 @@ def _parse_allowed_origins() -> list[str]:
     return ["http://localhost:3000", "http://127.0.0.1:3000"]
 
 
+def _dev_origin_regex() -> str | None:
+    app_env = os.getenv("APP_ENV", "development").strip().lower()
+    if app_env == "production":
+        return None
+    return r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+
+
 
 
 
 app = FastAPI()
 
 allow_origins = _parse_allowed_origins()
+allow_origin_regex = _dev_origin_regex()
 allow_credentials = _parse_bool(os.getenv("CORS_ALLOW_CREDENTIALS", "true"), True)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
+    allow_origin_regex=allow_origin_regex,
     allow_credentials=allow_credentials,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],

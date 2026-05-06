@@ -9,6 +9,12 @@ export interface PathOption {
   image: string;
 };
 
+export interface SelectedPathResponse {
+  id: string;
+  role: PathOption["id"];
+  difficulty: string;
+}
+
 // ==================== PATH OPERATIONS ====================
 
 // Save selected path
@@ -17,4 +23,9 @@ export const saveSelectedPath = async (pathId: PathOption["id"]) => {
   return res;
 };
 
+// Get selected path
+export const getSelectedPath = async () => {
+  const res = await apiClient.get<SelectedPathResponse>(ENDPOINTS.PATH.GET_SELECTED_PATH);
+  return res;
+};
 
