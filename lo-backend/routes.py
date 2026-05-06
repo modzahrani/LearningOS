@@ -82,6 +82,7 @@ COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true" if APP_ENV == "production" els
 COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "none" if APP_ENV == "production" else "lax")
 COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
+EMAIL_CONFIRM_REDIRECT_URL = os.getenv("EMAIL_CONFIRM_REDIRECT_URL", "").strip()
 LESSON_STORYBOARD_CACHE_TTL_SECONDS = int(
     os.getenv("LESSON_STORYBOARD_CACHE_TTL_SECONDS", "3600")
 )
@@ -176,6 +177,22 @@ def _allowed_redirect_origins() -> set[str]:
         )
 
     return origins
+
+
+def _build_first_party_redirect_url(path: str) -> str:
+    """Build a trusted frontend redirect URL for auth email flows."""
+    preferred = EMAIL_CONFIRM_REDIRECT_URL.rstrip("/")
+    if preferred:
+        return preferred
+
+    allowed_origins = _allowed_redirect_origins()
+    if FRONTEND_URL:
+        return f"{FRONTEND_URL.rstrip('/')}{path}"
+    if allowed_origins:
+        origin = sorted(allowed_origins)[0].rstrip("/")
+        return f"{origin}{path}"
+
+    raise HTTPException(status_code=500, detail="Frontend redirect origin is not configured")
 
 
 def _validate_auth_redirect_url(raw_url: str, expected_path: str) -> str:
@@ -1658,6 +1675,7 @@ async def create_user(user: UserCreate):
     first_name = normalize_name(user.first_name, "First name")
     last_name = normalize_name(user.last_name, "Last name")
     validate_password_strength(user.password)
+    email_confirm_redirect = _build_first_party_redirect_url("/login")
 
     if not user.agree_terms:
         raise HTTPException(status_code=400, detail="You must agree to the terms and conditions")
@@ -1671,6 +1689,7 @@ async def create_user(user: UserCreate):
                 "email": email,
                 "password": user.password,
                 "options": {
+                    "email_redirect_to": email_confirm_redirect,
                     "data": {
                         "first_name": first_name,
                         "last_name": last_name,

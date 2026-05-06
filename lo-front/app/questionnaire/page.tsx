@@ -121,31 +121,31 @@ export default function Questionnaire() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-2 justify-center items-center min-h-screen px-12 bg-[#F6F6F8]">
-      
-      <div className="w-full max-w-[1300px]">
-        <h1 className="text-3xl font-bold">AI Knowledge Calibration</h1>
-        <p className="text-lg text-[#4C669A] mt-1">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.16),transparent_28%),linear-gradient(180deg,var(--background),color-mix(in_oklab,var(--muted)_68%,transparent))] px-4 py-8 md:px-8">
+      <div className="mx-auto flex w-full max-w-[1300px] flex-col gap-6">
+        <div>
+        <h1 className="text-3xl font-bold text-foreground md:text-4xl">AI Knowledge Calibration</h1>
+        <p className="mt-2 max-w-4xl text-base text-muted-foreground md:text-lg">
           Answer these questions to help our AI tailor the curriculum to your expertise. Your answers determine your starting level.
         </p>
       </div>
 
-      <div className="flex gap-6 items-start w-full max-w-[1300px]">
+      <div className="flex w-full flex-col gap-6 xl:flex-row xl:items-start">
 
         {/* Main question card */}
-        <section className="flex flex-col gap-4 flex-1 bg-white rounded-lg shadow-lg p-6 min-h-[520px]">
+        <section className="flex min-h-[520px] flex-1 flex-col gap-5 rounded-[28px] border border-border bg-card/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur md:p-8">
           <header className="flex justify-between items-center">
-            <h2 className="text-md font-semibold">
+            <h2 className="text-sm font-semibold text-foreground md:text-base">
               {loading ? "Loading..." : `Question ${questionNumber} of ${totalQuestions}`}
             </h2>
-            <p className="text-sm text-[#4C669A]">{progress}% Completed</p>
+            <p className="text-sm text-blue-600 dark:text-blue-400">{progress}% Completed</p>
           </header>
 
           <div className="progress-track">
             <div className="progress-fill" style={{ width: `${progress}%` }} />
           </div>
 
-          <h1 className="text-xl font-bold">
+          <h1 className="text-xl font-bold text-foreground md:text-2xl">
             {question?.text ?? (loading ? "Loading question..." : "No question available")}
           </h1>
 
@@ -164,8 +164,8 @@ export default function Questionnaire() {
             )}
           </div>
 
-          <div className="flex justify-between items-center mt-auto pt-4">
-            <div className="text-sm text-[#4C669A]">
+          <div className="mt-auto flex flex-col gap-4 border-t border-border pt-4 md:flex-row md:items-center md:justify-between">
+            <div className="text-sm text-muted-foreground">
               {error && <span className="text-red-500">{error}</span>}
               {!error && lastCorrect === true && "Correct!"}
               {!error && lastCorrect === false && "Not quite — try the next one."}
@@ -175,7 +175,7 @@ export default function Questionnaire() {
               <button
                 type="button"
                 onClick={handleStartQuiz}
-                className="bg-blue-500 w-[159px] hover:bg-blue-600 text-white rounded-md h-9 px-4"
+                className="h-11 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700"
               >
                 Restart Quiz
               </button>
@@ -185,10 +185,10 @@ export default function Questionnaire() {
                 onClick={submitAnswer}
                 disabled={!canSubmit}
                 className={[
-                  "w-[159px] rounded-md h-9 px-4 text-white transition",
+                  "h-11 rounded-xl px-5 text-sm font-semibold text-white transition md:min-w-[159px]",
                   canSubmit
-                    ? "bg-blue-500 hover:bg-blue-600"
-                    : "bg-blue-300 cursor-not-allowed",
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "cursor-not-allowed bg-blue-300 dark:bg-blue-900/50",
                 ].join(" ")}
               >
                 {submitting ? "Submitting..." : "Next Question"}
@@ -198,35 +198,36 @@ export default function Questionnaire() {
         </section>
 
         {/* AI Calibration sidebar + button */}
-        <div className="flex flex-col gap-2 w-[300px] shrink-0">
-          <section className="flex flex-col gap-4 bg-white rounded-lg shadow-lg p-6">
+        <div className="flex w-full shrink-0 flex-col gap-3 xl:w-[320px]">
+          <section className="flex flex-col gap-4 rounded-[28px] border border-border bg-card/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur">
             <header className="flex items-start gap-2">
-              <Bot className="text-[#4C669A] w-[44.5px] h-[44.5px] shrink-0" />
+              <Bot className="h-[44.5px] w-[44.5px] shrink-0 text-blue-600 dark:text-blue-400" />
               <div className="flex flex-col gap-1">
-                <h2 className="text-sm font-semibold">AI Calibration</h2>
-                <p className="text-sm text-[#4C669A]">Analyzing your responses...</p>
+                <h2 className="text-sm font-semibold text-foreground">AI Calibration</h2>
+                <p className="text-sm text-blue-600 dark:text-blue-400">Analyzing your responses...</p>
               </div>
             </header>
 
-            <p className="text-sm text-[#4C669A] leading-relaxed">
+            <p className="text-sm leading-relaxed text-muted-foreground">
               Based on your previous answers, we&apos;ve adjusted this question to test your fundamental understanding of ML categories.
             </p>
 
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <p className="text-sm text-[#4C669A]">AI adjusting in real-time</p>
+              <p className="text-sm text-muted-foreground">AI adjusting in real-time</p>
             </div>
           </section>
 
           <button
-            className="text-xs text-[#4C669A] text-center"
+            className="text-center text-xs font-medium text-blue-600 transition hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
             onClick={() => router.push("/path-select")}
           >
-            back to path selection?
+            Back to path selection
           </button>
         </div>
 
       </div>
     </div>
+    </main>
   );
 }

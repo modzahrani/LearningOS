@@ -108,7 +108,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="container">
+    <div className="login-shell">
 
       {/* LEFT SIDE */}
       <div className="left">
