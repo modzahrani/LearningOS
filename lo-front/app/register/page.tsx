@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
 import { Manrope } from "next/font/google";
+import { toast } from "sonner";
 import { register, startOAuthLogin, type OAuthProvider } from "@/api/userProvider";
 
 const manrope = Manrope({
@@ -23,7 +24,6 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [oauthProvider, setOauthProvider] = useState<OAuthProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [successToast, setSuccessToast] = useState<string | null>(null);
 
   const passwordChecks = useMemo(
     () => ({
@@ -101,7 +101,7 @@ export default function RegisterPage() {
         last_name: lastName,
         agree_terms: agree,
       });
-      setSuccessToast("Registration successful. Confirm your email.");
+      toast.success("Registration successful. Please verify your email before logging in.");
       setTimeout(() => {
         router.push("/login");
       }, 1200);
@@ -140,12 +140,6 @@ export default function RegisterPage() {
 
   return (
     <div className={`${manrope.variable} font-sans flex min-h-screen w-full bg-background text-foreground`}>
-      {successToast && (
-        <div className="fixed right-4 top-4 z-50 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg">
-          {successToast}
-        </div>
-      )}
-      
       {/* Top-left logo + title */}
       <div className="flex items-center absolute top-2 left-1 z-20">
         <img src="/assets/learningos-logo.png" alt="Logo" className="w-10 h-10 rounded-full"/>
