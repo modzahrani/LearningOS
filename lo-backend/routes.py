@@ -665,6 +665,33 @@ async def _assign_lessons_to_user(
     role = str(profile.get("role") or "student")
     level = _normalize_level(level)
     candidates = await _list_lesson_candidates(db, role)
+    completed_sources = {
+        str(source)
+        for source in (
+            await db.fetchval(
+                """
+                SELECT ARRAY(
+                    SELECT DISTINCT COALESCE(lc.metadata->>'source', '')
+                    FROM user_progress_lessons upl
+                    JOIN learning_chunks lc
+                        ON lc.id = upl.chunk_id
+                    WHERE upl.user_id = $1
+                      AND upl.status = 'completed'
+                      AND COALESCE(lc.metadata->>'role', 'student') = $2
+                )
+                """,
+                user_id,
+                role,
+            )
+            or []
+        )
+        if str(source).strip()
+    }
+    candidates = [
+        candidate
+        for candidate in candidates
+        if str(candidate.get("source") or "").strip() not in completed_sources
+    ]
     candidate_pool = _select_candidate_pool_for_level(candidates, level)
 
     if not candidates:
@@ -849,6 +876,40 @@ def _level_from_completed_lessons(current_level: int, completed_lessons: int) ->
     return max(_normalize_level(current_level), earned_level)
 
 
+async def _has_unseen_lessons_at_level(
+    db: asyncpg.Connection, user_id: str, role: str, level: int
+) -> bool:
+    """Check whether the learner still has unseen lesson sources at a level."""
+    return bool(
+        await db.fetchval(
+            """
+            SELECT 1
+            FROM learning_chunks lc
+            WHERE COALESCE(lc.metadata->>'role', 'student') = $2
+              AND CASE
+                    WHEN COALESCE(lc.metadata->>'level', '') ~ '^[0-9]+$'
+                        THEN (lc.metadata->>'level')::int
+                    ELSE 1
+                  END = $3
+              AND NOT EXISTS (
+                    SELECT 1
+                    FROM user_progress_lessons upl
+                    JOIN learning_chunks seen_lc
+                        ON seen_lc.id = upl.chunk_id
+                    WHERE upl.user_id = $1
+                      AND upl.status = 'completed'
+                      AND COALESCE(seen_lc.metadata->>'role', 'student') = $2
+                      AND COALESCE(seen_lc.metadata->>'source', '') = COALESCE(lc.metadata->>'source', '')
+              )
+            LIMIT 1
+            """,
+            user_id,
+            role,
+            _normalize_level(level),
+        )
+    )
+
+
 async def _refresh_lessons_after_completion(
     db: asyncpg.Connection,
     user_id: str,
@@ -882,6 +943,16 @@ async def _refresh_lessons_after_completion(
     open_lessons = [lesson for lesson in lessons if lesson.get("status") != "completed"]
 
     if len(open_lessons) < 1:
+        while (
+            updated_level < 3
+            and not await _has_unseen_lessons_at_level(
+                db, user_id, role, updated_level
+            )
+        ):
+            updated_level += 1
+            await _save_user_progress(db, user_id, updated_level, status="in_progress")
+            await _save_user_profile_difficulty(db, user_id, updated_level)
+
         profile_row = await db.fetchrow(
             """
             SELECT
